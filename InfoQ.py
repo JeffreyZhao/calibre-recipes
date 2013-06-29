@@ -4,6 +4,8 @@ from datetime import date
 
 site_url = 'http://www.infoq.com/'
 
+title_prefix = 'InfoQ'
+
 date_regexes = [
     r'Jan\s+(?P<day>\d{2}),\s+(?P<year>\d{4})',
     r'Feb\s+(?P<day>\d{2}),\s+(?P<year>\d{4})',
@@ -19,7 +21,26 @@ date_regexes = [
     r'Dec\s+(?P<day>\d{2}),\s+(?P<year>\d{4})'
 ]
 
-title_prefix = 'InfoQ'
+'''
+site_url = 'http://www.infoq.com/cn/'
+
+title_prefix = 'InfoQ中国站'
+
+date_regexes = [
+    r'一月\s+(?P<day>\d{2}),\s+(?P<year>\d{4})',
+    r'二月\s+(?P<day>\d{2}),\s+(?P<year>\d{4})',
+    r'三月\s+(?P<day>\d{2}),\s+(?P<year>\d{4})',
+    r'四月\s+(?P<day>\d{2}),\s+(?P<year>\d{4})',
+    r'五月\s+(?P<day>\d{2}),\s+(?P<year>\d{4})',
+    r'六月\s+(?P<day>\d{2}),\s+(?P<year>\d{4})',
+    r'七月\s+(?P<day>\d{2}),\s+(?P<year>\d{4})',
+    r'八月\s+(?P<day>\d{2}),\s+(?P<year>\d{4})',
+    r'九月\s+(?P<day>\d{2}),\s+(?P<year>\d{4})',
+    r'十月\s+(?P<day>\d{2}),\s+(?P<year>\d{4})',
+    r'十一月\s+(?P<day>\d{2}),\s+(?P<year>\d{4})',
+    r'十二月\s+(?P<day>\d{2}),\s+(?P<year>\d{4})'
+]
+'''
 
 # the sections to download
 sections = [ 'news', 'articles', 'interviews' ]
@@ -31,7 +52,7 @@ date_range = (date(2013, 6, 20), date(2013, 6, 22))
 section_date_ranges = {
     # 'news': (date(2013, 6, 21), date(2013, 6, 22)),
     # 'articles': (date(2013, 6, 5), date(2013, 6, 10)),
-    'interviews': (date(2013, 6, 1), date(2013, 6, 15))
+    # 'interviews': (date(2013, 1, 1), date(2013, 3, 1))
 }
 
 # do NOT touch the code below unless you know what to do
@@ -123,7 +144,7 @@ class InfoQ(BasicNewsRecipe):
         count = 0
 
         while True:
-            print '>>> Loading items from ', count
+            print '>>> Loading items from ' + section + '/' + str(count)
 
             root = self.index_to_soup(site_url + section + '/' + str(count))
             content_div = root.find('div', { 'id': 'content' })
@@ -204,7 +225,7 @@ class InfoQ(BasicNewsRecipe):
             
             # clear the presentation area
             for div in full_div.findAll('div'):
-                div.extract();
+                div.extract()
             
             # add qa list back to presentation area
             for qa_div in qa_div_list:
