@@ -2,6 +2,8 @@
 from calibre.ebooks.BeautifulSoup import NavigableString, Tag
 from datetime import date
 
+language = 'en'
+
 site_url = 'http://www.infoq.com/'
 
 title_prefix = 'InfoQ'
@@ -22,6 +24,8 @@ date_regexes = [
 ]
 
 '''
+language = 'zh'
+
 site_url = 'http://www.infoq.com/cn/'
 
 title_prefix = 'InfoQ中国站'
@@ -126,7 +130,9 @@ _section_item_classes = {
         
 class InfoQ(BasicNewsRecipe):
     title = title_prefix
-    # auto_cleanup = True
+    
+    language = language
+    
     no_stylesheets = True
     
     keep_only_tags = [ { 'id': 'content' } ]
