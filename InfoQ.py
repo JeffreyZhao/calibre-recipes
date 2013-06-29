@@ -1,8 +1,9 @@
-import re, urlparse, itertools
+﻿import re, urlparse, itertools
 from calibre.ebooks.BeautifulSoup import NavigableString, Tag
 from datetime import date
 
 site_url = 'http://www.infoq.com/'
+
 date_regexes = [
     r'Jan\s+(?P<day>\d{2}),\s+(?P<year>\d{4})',
     r'Feb\s+(?P<day>\d{2}),\s+(?P<year>\d{4})',
@@ -17,6 +18,54 @@ date_regexes = [
     r'Nov\s+(?P<day>\d{2}),\s+(?P<year>\d{4})',
     r'Dec\s+(?P<day>\d{2}),\s+(?P<year>\d{4})'
 ]
+
+title_prefix = 'InfoQ'
+
+# the sections to download
+sections = [ 'news', 'articles', 'interviews' ]
+
+# the range of date (both inclusive to download
+date_range = (date(2013, 6, 20), date(2013, 6, 22))
+
+# the range of date to override for sections
+section_date_ranges = {
+    # 'news': (date(2013, 6, 21), date(2013, 6, 22)),
+    # 'articles': (date(2013, 6, 5), date(2013, 6, 10)),
+    'interviews': (date(2013, 6, 1), date(2013, 6, 15))
+}
+
+# do NOT touch the code below unless you know what to do
+
+def range2str(range, shorten):
+    year_fmt = '%Y%m%d'
+    month_fmt = '%m%d'
+    day_fmt = '%d'
+
+    begin, end = range
+    if begin == end:
+        return begin.strftime(year_fmt)
+    else:
+        text = begin.strftime(year_fmt) + "~"
+        if not shorten:
+            return text + end.strftime(year_fmt)
+        
+        if begin.year == end.year and begin.month == end.month:
+            return text + end.strftime(day_fmt)
+
+        if begin.year == end.year:
+            return text + end.strftime(month_fmt)
+            
+        return text + end.strftime(year_fmt)
+
+def generate_title(prefix):
+    text = prefix + ' ' + range2str(date_range, True)
+    
+    for sec in sections:
+        range = section_date_ranges.get(sec)
+        if range:
+            text = text + ' ' + sec[0].upper() + range2str(range, True)
+    
+    return text
 
 def parse_date(text):
     for i in xrange(len(date_regexes)):
@@ -47,15 +96,15 @@ def find_by_class(tag, name, cls):
         
         yield c
 
-section_texts = {}
-section_item_classes = {
+_section_texts = {}
+_section_item_classes = {
     'news': ['news_type_block'],
     'articles': ['news_type1', 'news_type2'],
     'interviews': ['news_type_video']
 }
         
 class InfoQ(BasicNewsRecipe):
-    title = u'InfoQ'
+    title = title_prefix
     # auto_cleanup = True
     no_stylesheets = True
     
@@ -82,10 +131,10 @@ class InfoQ(BasicNewsRecipe):
             if not text_retrieved:
                 text_retrieved = True
                 text = content_div.h2.string.strip()
-                section_texts[section] = text
+                _section_texts[section] = text
                 print '>>> Text for section "' + section + '": ' + text
                 
-            for item_class in section_item_classes[section]:
+            for item_class in _section_item_classes[section]:
                 for item_div in find_by_class(content_div, 'div', item_class):
                     item = {}
                     link = item_div.h2.a
@@ -103,19 +152,35 @@ class InfoQ(BasicNewsRecipe):
                     count = count + 1
     
     def parse_index(self):
+        self.title = generate_title(self.title)
+    
         index = []
         
-        dict = { 'news': 300, 'articles': 100, 'interviews': 30 }
+        for sec in sections:
+            item_list = []
         
-        for section in dict:
-            items = list(itertools.islice(self.get_items(section), 0, dict[section]))
-            index.append((section_texts[section], items))
+            range = section_date_ranges.get(sec)
+            if not range: range = date_range
+            
+            begin, end = range
+            for item in self.get_items(sec):
+                date = item['date']
+                
+                if date > end: continue
+                if date < begin: break
+
+                item_list.append(item)
+            
+            index.append((_section_texts[sec] + ' (' + range2str(range, False) + ')', item_list))
 
         return index
     
     def postprocess_html(self, soup, first_fetch):
         author_general = soup.find('span', { 'class': 'author_general' })
         author_general.em.extract()
+    
+        # the complete content
+        full_div = None
     
         transcript_div = soup.find('div', { 'id': 'transcript' })
         if transcript_div: # that's an interview
@@ -127,7 +192,7 @@ class InfoQ(BasicNewsRecipe):
                 # replace all <a class="question_link">...</a> with <strong>...</strong>
                 question_link = qa_div.find('a', { 'class': 'question_link' })
                 question_strong = Tag(soup, 'strong')
-                question_strong.insert(0, question_link.string)
+                question_strong.append(question_link.string)
                 question_link.replaceWith(question_strong)
             
             full_div = find_by_class(soup.find('div', { 'id': 'content' }), 'div', 'presentation_full').next()
@@ -143,10 +208,28 @@ class InfoQ(BasicNewsRecipe):
             
             # add qa list back to presentation area
             for qa_div in qa_div_list:
-                full_div.insert(len(full_div.contents), qa_div)
+                full_div.append(qa_div)
         else:
-            text_info = find_by_class(soup, 'div', 'text_info').next()
-            for other in text_info.findAll('div'):
+            # text only without title
+            text_div = find_by_class(soup, 'div', 'text_info').next()
+            text_div.extract()
+            
+            for other in text_div.findAll('div'):
                 other.extract()
+            
+            # full_div contains title
+            full_div = soup.find('div', { 'id': 'content' })
+            for other in full_div.findAll('div'):
+                other.extract()
+            
+            full_div.append(text_div)
+
+        # keep full_div in <body /> only
+        full_div.extract()
+        
+        for other in soup.body:
+            other.extract()
+            
+        soup.body.append(full_div)
 
         return soup
