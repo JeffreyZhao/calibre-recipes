@@ -1,6 +1,6 @@
-﻿import re, urlparse, itertools
+import re, urlparse, itertools
 from calibre.ebooks.BeautifulSoup import NavigableString, Tag
-from datetime import date
+from datetime import date, timedelta
 
 language = 'en'
 
