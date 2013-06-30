@@ -49,7 +49,7 @@ date_regexes = [
 # the sections to download
 sections = [ 'news', 'articles', 'interviews' ]
 
-# the range of date (both inclusive to download
+# the range of date (both inclusive) to download
 date_range = (date(2013, 6, 20), date(2013, 6, 22))
 
 # the range of date to override for sections
