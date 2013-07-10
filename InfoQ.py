@@ -251,12 +251,16 @@ class InfoQ(BasicNewsRecipe):
             
             full_div.append(text_div)
 
-        # keep full_div in <body /> only
         full_div.extract()
         
+        nav_div = soup.body.div
+        nav_div.extract()
+        
+        # keep nav_div and full_div in <body /> only
         for other in soup.body:
             other.extract()
-            
+        
+        soup.body.append(nav_div)
         soup.body.append(full_div)
 
         return soup
